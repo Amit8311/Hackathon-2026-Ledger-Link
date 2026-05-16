@@ -1,19 +1,19 @@
 import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { X, Camera, LogOut, Check } from 'lucide-react';
+import { X, Camera, Check } from 'lucide-react';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
 export default function ProfileModal({ onClose }) {
-  const { user, logout, updateUser } = useAuth();
-  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
+  const toast = useToast();
   const fileInputRef = useRef(null);
 
   const nameParts = (user?.name || '').split(' ');
   const [firstName, setFirstName] = useState(nameParts[0] || '');
-  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [lastName, setLastName]   = useState(nameParts.slice(1).join(' ') || '');
+  const [saving, setSaving]       = useState(false);
+  const [saved, setSaved]         = useState(false);
   const [photoPreview, setPhotoPreview] = useState(
     user?.profile_photo ? `http://localhost:8000/uploads/profiles/${user.profile_photo}` : null
   );
@@ -28,7 +28,10 @@ export default function ProfileModal({ onClose }) {
       const res = await api.patch('/api/users/me', { name: fullName });
       updateUser({ ...user, name: res.data.name });
       setSaved(true);
-      setTimeout(() => onClose(), 800);
+      toast.success('Profile updated');
+      setTimeout(() => onClose(), 700);
+    } catch {
+      toast.error('Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -37,8 +40,7 @@ export default function ProfileModal({ onClose }) {
   const handlePhoto = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const preview = URL.createObjectURL(file);
-    setPhotoPreview(preview);
+    setPhotoPreview(URL.createObjectURL(file));
     const formData = new FormData();
     formData.append('file', file);
     try {
@@ -47,75 +49,73 @@ export default function ProfileModal({ onClose }) {
       });
       updateUser({ ...user, profile_photo: res.data.profile_photo });
       setPhotoPreview(`http://localhost:8000/uploads/profiles/${res.data.profile_photo}?t=${Date.now()}`);
+      toast.success('Photo updated');
     } catch {
       setPhotoPreview(user?.profile_photo ? `http://localhost:8000/uploads/profiles/${user.profile_photo}` : null);
+      toast.error('Photo upload failed');
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    onClose();
-    navigate('/login');
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4 animate-modal-in">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-surface rounded-2xl border border-line w-full max-w-sm mx-4 animate-modal-in overflow-hidden"
+           style={{ boxShadow: '0 24px 60px -12px rgba(15,15,17,.18)' }}>
 
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="font-semibold text-gray-900">My Profile</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={18} />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
+          <h2 className="font-semibold text-ink text-[15px]">Edit Profile</h2>
+          <button onClick={onClose} className="text-ink-3 hover:text-ink-2 transition-colors">
+            <X size={17} />
           </button>
         </div>
 
-        {/* Avatar */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden border-2 border-blue-200">
-              {photoPreview ? (
-                <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-2xl font-bold text-blue-600">{initials}</span>
-              )}
+        <div className="px-5 py-5 space-y-5">
+          {/* Avatar */}
+          <div className="flex flex-col items-center">
+            <div className="relative">
+              <div className="rounded-full bg-brand-50 border-2 border-brand-100 flex items-center justify-center overflow-hidden"
+                   style={{ width: 72, height: 72 }}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[22px] font-bold text-brand-600">{initials}</span>
+                )}
+              </div>
+              <button
+                onClick={() => fileInputRef.current.click()}
+                className="absolute bottom-0 right-0 w-6 h-6 bg-brand-600 hover:bg-brand-700 rounded-full flex items-center justify-center shadow transition-colors"
+              >
+                <Camera size={11} color="white" />
+              </button>
             </div>
-            <button
-              onClick={() => fileInputRef.current.click()}
-              className="absolute bottom-0 right-0 w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 shadow"
-            >
-              <Camera size={13} color="white" />
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
+            <p className="text-[11px] text-ink-3 mt-2">Click camera icon to update photo</p>
+          </div>
+
+          {/* Fields */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-ink-3 font-medium mb-1">First Name</label>
+                <input className="input text-[13px]" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" />
+              </div>
+              <div>
+                <label className="block text-[11px] uppercase tracking-wider text-ink-3 font-medium mb-1">Last Name</label>
+                <input className="input text-[13px]" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[11px] uppercase tracking-wider text-ink-3 font-medium mb-1">Email</label>
+              <input className="input text-[13px] opacity-50 cursor-not-allowed" value={user?.email || ''} disabled />
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="btn-brand flex-1">
+              {saved ? <><Check size={14} /> Saved!</> : saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto} />
-          <p className="text-xs text-gray-400 mt-2">Click camera icon to change photo</p>
         </div>
-
-        {/* Fields */}
-        <div className="space-y-3 mb-5">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">First Name</label>
-            <input className="input" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Last Name</label>
-            <input className="input" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Email</label>
-            <input className="input bg-gray-50 text-gray-400" value={user?.email || ''} disabled />
-          </div>
-        </div>
-
-        <button onClick={handleSave} disabled={saving} className="btn-primary w-full justify-center mb-3">
-          {saved ? <><Check size={14} /> Saved!</> : saving ? 'Saving...' : 'Save Changes'}
-        </button>
-
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 text-sm text-red-600 hover:text-red-700 border border-red-200 rounded-lg py-2 hover:bg-red-50 transition-colors"
-        >
-          <LogOut size={14} /> Sign Out
-        </button>
       </div>
     </div>
   );

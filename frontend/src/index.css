@@ -1,13 +1,24 @@
 * { box-sizing: border-box; }
 
+:root {
+  --canvas:  #E8EDF5;
+  --surface: #F4F7FC;
+  --line:    #D8DEE8;
+}
+
 body {
   margin: 0;
   font-family: "Geist", ui-sans-serif, system-ui, sans-serif;
-  background-color: #FAFAF9;
+  background-color: var(--canvas);
   color: #0E0E10;
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
 }
+
+/* Ensure Tailwind utility aliases always resolve */
+.bg-canvas  { background-color: var(--canvas)  !important; }
+.bg-surface { background-color: var(--surface) !important; }
+.border-line { border-color: var(--line) !important; }
 
 /* ── Keyframes ──────────────────────────────────────────────────────── */
 @keyframes shimmer {
@@ -31,11 +42,11 @@ body {
     linear-gradient(135deg, #1E1B4B 0%, #312E81 60%, #4338CA 100%);
 }
 .dotgrid {
-  background-image: radial-gradient(rgba(15,15,17,.06) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(79,70,229,.07) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 .shimmer-bg {
-  background: linear-gradient(90deg, #F4F2EE 0%, #ECEAE5 40%, #F4F2EE 80%);
+  background: linear-gradient(90deg, #D8E0EC 0%, #C8D4E4 40%, #D8E0EC 80%);
   background-size: 800px 100%;
   animation: shimmer 1.4s linear infinite;
 }
@@ -95,7 +106,7 @@ body {
   height: 2.375rem;
   border-radius: 0.5rem;
   font-weight: 500;
-  border: 1px solid #EAE8E4;
+  border: 1px solid #E2E6EB;
   cursor: pointer;
   transition: all 120ms cubic-bezier(.2,.8,.2,1);
   display: inline-flex;
@@ -105,7 +116,7 @@ body {
   font-size: 0.8375rem;
   font-family: inherit;
 }
-.btn-secondary:hover  { border-color: #D6D3CE; background-color: #FAFAF9; }
+.btn-secondary:hover  { border-color: #B8C2D0; background-color: var(--canvas); }
 .btn-secondary:active { transform: scale(.98); }
 
 .btn-danger {
@@ -131,7 +142,7 @@ body {
 /* ── Input ──────────────────────────────────────────────────────────── */
 .input {
   width: 100%;
-  border: 1px solid #EAE8E4;
+  border: 1px solid #E2E6EB;
   border-radius: 0.5rem;
   padding: 0 0.75rem;
   height: 2.375rem;
@@ -143,16 +154,16 @@ body {
   transition: border-color 120ms, box-shadow 120ms;
 }
 .input:focus        { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,.12); }
-.input::placeholder { color: #A8A29E; }
-.input:disabled     { background: #FAFAF9; color: #A8A29E; cursor: not-allowed; }
+.input::placeholder { color: #9CA3AF; }
+.input:disabled     { background: var(--canvas); color: #9CA3AF; cursor: not-allowed; }
 
 /* ── Card ───────────────────────────────────────────────────────────── */
 .card {
   background-color: white;
   border-radius: 1rem;
-  border: 1px solid #EAE8E4;
+  border: 1px solid #E2E6EB;
   padding: 1.5rem;
-  box-shadow: 0 1px 0 0 rgba(15,15,17,.04), 0 1px 2px 0 rgba(15,15,17,.04);
+  box-shadow: 0 1px 0 0 rgba(15,15,17,.04), 0 2px 6px 0 rgba(15,15,17,.06);
 }
 
 /* ── Status badges ──────────────────────────────────────────────────── */

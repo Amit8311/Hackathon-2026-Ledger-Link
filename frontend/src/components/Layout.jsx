@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Building2, Users, FileText, Upload, ClipboardCheck,
-  BarChart2, Home, MoreVertical,
+  BarChart2, Home, UserCircle, KeyRound, LogOut,
 } from 'lucide-react';
 import ProfileModal from './ProfileModal';
+import ChangePasswordModal from './ChangePasswordModal';
 
-// Drop images into public/bg/ and they will apply automatically.
 const PAGE_BG = {
   '/platform':             { img: '/bg/platform-dashboard.jpg',   overlay: 'rgba(250,250,249,0.82)' },
   '/platform/firms':       { img: '/bg/platform-firms.jpg',       overlay: 'rgba(250,250,249,0.82)' },
@@ -36,9 +36,9 @@ const roleNavMap = {
     { to: '/firm/payment-heads',  label: 'Payment Heads', icon: FileText,  group: 'Work' },
   ],
   accountant: [
-    { to: '/accountant',          label: 'Dashboard',           icon: Home,            group: 'Overview' },
-    { to: '/accountant/review',   label: 'Review Transactions', icon: ClipboardCheck,  group: 'Work' },
-    { to: '/accountant/reports',  label: 'Upload Reports',      icon: Upload,          group: 'Work' },
+    { to: '/accountant',          label: 'Dashboard',           icon: Home,           group: 'Overview' },
+    { to: '/accountant/review',   label: 'Review Transactions', icon: ClipboardCheck, group: 'Work' },
+    { to: '/accountant/reports',  label: 'Upload Reports',      icon: Upload,         group: 'Work' },
   ],
   company_admin: [
     { to: '/company',               label: 'Dashboard',        icon: Home,      group: 'Overview' },
@@ -63,10 +63,88 @@ const workspaceMap = {
 
 const exactRoots = ['/platform', '/firm', '/accountant', '/company'];
 
+function UserMenu({ user, initials, onProfile, onChangePw }) {
+  const { logout } = useAuth();
+  const navigate   = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleLogout = () => { setOpen(false); logout(); navigate('/login'); };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-2.5 p-2 rounded-xl border border-line hover:bg-canvas transition-colors text-left"
+      >
+        <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-line bg-brand-50 flex-shrink-0">
+          {user?.profile_photo ? (
+            <img src={`http://localhost:8000/uploads/profiles/${user.profile_photo}`} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[11.5px] font-semibold text-brand-700">{initials}</span>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[12.5px] font-medium leading-tight truncate text-ink">{user?.name}</div>
+          <div className="text-[10.5px] text-ink-3 font-mono truncate">{user?.email}</div>
+        </div>
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 bottom-full mb-2 w-56 border border-line rounded-2xl overflow-hidden"
+          style={{ backgroundColor: 'var(--surface)' }}
+          style={{ boxShadow: '0 -8px 32px -4px rgba(15,15,17,.14), 0 0 0 1px rgba(15,15,17,.06)' }}
+        >
+          {/* Identity */}
+          <div className="px-4 py-3 border-b border-line">
+            <p className="text-[13px] font-semibold text-ink truncate">{user?.name}</p>
+            <p className="text-[11px] text-ink-3 font-mono truncate">{user?.email}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="py-1">
+            <button
+              onClick={() => { setOpen(false); onProfile(); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-ink hover:bg-canvas transition-colors text-left"
+            >
+              <UserCircle size={15} className="text-ink-3 flex-shrink-0" /> Edit Profile
+            </button>
+            <button
+              onClick={() => { setOpen(false); onChangePw(); }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-ink hover:bg-canvas transition-colors text-left"
+            >
+              <KeyRound size={15} className="text-ink-3 flex-shrink-0" /> Change Password
+            </button>
+          </div>
+
+          <div className="border-t border-line py-1">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors text-left"
+            >
+              <LogOut size={15} className="flex-shrink-0" /> Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Layout({ children }) {
   const { user } = useAuth();
   const location = useLocation();
-  const [showProfile, setShowProfile] = useState(false);
+
+  // Modal state lives here — outside any element with backdrop-filter
+  const [showProfile,  setShowProfile]  = useState(false);
+  const [showChangePw, setShowChangePw] = useState(false);
 
   const navItems  = roleNavMap[user?.role] || [];
   const workspace = workspaceMap[user?.role] || { name: 'LedgerLink', type: '', initials: 'LL' };
@@ -97,11 +175,13 @@ export default function Layout({ children }) {
     <div className="flex h-screen bg-canvas">
 
       {/* Sidebar */}
-      <aside className="w-60 bg-surface border-r border-line flex flex-col h-screen flex-shrink-0">
+      <aside className="w-60 border-r border-line flex flex-col h-screen flex-shrink-0"
+             style={{ backgroundColor: 'var(--surface)' }}>
 
-        {/* Workspace switcher */}
+        {/* Workspace badge */}
         <div className="p-3 border-b border-line">
-          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-canvas border border-line">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-line"
+               style={{ backgroundColor: 'var(--canvas)' }}>
             <span
               className="w-7 h-7 rounded-md flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0 font-mono"
               style={{ background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)' }}
@@ -109,12 +189,8 @@ export default function Layout({ children }) {
               {workspace.initials}
             </span>
             <div className="flex-1 min-w-0">
-              <span className="block text-[12.5px] font-semibold leading-tight truncate text-ink">
-                {workspace.name}
-              </span>
-              <span className="block text-[10.5px] text-ink-3 font-mono truncate">
-                {workspace.type}
-              </span>
+              <span className="block text-[12.5px] font-semibold leading-tight truncate text-ink">{workspace.name}</span>
+              <span className="block text-[10.5px] text-ink-3 font-mono truncate">{workspace.type}</span>
             </div>
           </div>
         </div>
@@ -133,7 +209,7 @@ export default function Layout({ children }) {
                   className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg mb-0.5 transition-colors text-[13px] font-medium ${
                     isActive(to)
                       ? 'text-brand-700 bg-brand-50 ring-1 ring-inset ring-brand-600/15'
-                      : 'text-ink-2 hover:bg-canvas hover:text-ink'
+                      : 'text-ink-2 hover:text-ink'
                   }`}
                 >
                   <Icon size={15} />
@@ -144,31 +220,20 @@ export default function Layout({ children }) {
           ))}
         </nav>
 
-        {/* User cell */}
+        {/* User menu — bottom of sidebar */}
         <div className="p-3 border-t border-line">
-          <button
-            onClick={() => setShowProfile(true)}
-            className="w-full flex items-center gap-2.5 p-2 rounded-xl border border-line hover:bg-canvas transition-colors text-left"
-          >
-            <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border-2 border-line flex-shrink-0 bg-brand-50">
-              {user?.profile_photo ? (
-                <img src={`http://localhost:8000/uploads/profiles/${user.profile_photo}`} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-[11.5px] font-semibold text-brand-700">{initials}</span>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[12.5px] font-medium leading-tight truncate text-ink">{user?.name}</div>
-              <div className="text-[10.5px] text-ink-3 font-mono truncate">{user?.email}</div>
-            </div>
-            <MoreVertical size={14} className="text-ink-3 flex-shrink-0" />
-          </button>
+          <UserMenu
+            user={user}
+            initials={initials}
+            onProfile={() => setShowProfile(true)}
+            onChangePw={() => setShowChangePw(true)}
+          />
         </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto relative bg-canvas" style={mainStyle}>
-
+      <main className="flex-1 overflow-auto relative"
+            style={{ backgroundColor: 'var(--canvas)', ...mainStyle }}>
         {/* Top accent line */}
         <div className="sticky top-0 left-0 right-0 h-px pointer-events-none" style={{
           background: 'linear-gradient(90deg, transparent 0%, #4F46E5 40%, #7C3AED 60%, transparent 100%)',
@@ -178,7 +243,7 @@ export default function Layout({ children }) {
 
         {/* Dot-grid texture */}
         <div className="pointer-events-none fixed inset-0 left-60" style={{
-          backgroundImage: 'radial-gradient(rgba(15,15,17,.045) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(79,70,229,.06) 1px, transparent 1px)',
           backgroundSize: '24px 24px',
           zIndex: 0,
         }} />
@@ -188,7 +253,9 @@ export default function Layout({ children }) {
         </div>
       </main>
 
-      {showProfile && <ProfileModal onClose={() => setShowProfile(false)} />}
+      {/* Modals rendered at root level — never inside backdrop-filter elements */}
+      {showProfile  && <ProfileModal       onClose={() => setShowProfile(false)} />}
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
     </div>
   );
 }
