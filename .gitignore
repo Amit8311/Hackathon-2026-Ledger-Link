@@ -1,23 +1,33 @@
-# Environment variables - NEVER commit these
+# ── Secrets ───────────────────────────────────────────────────────────────────
 backend/.env
 *.env
 
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-backend/finbridge.db
-backend/ledgerlink.db
+
+# ── Database & uploads (runtime data, not source) ─────────────────────────────
 backend/*.db
 backend/uploads/
 
-# Node
+# ── Node ──────────────────────────────────────────────────────────────────────
 frontend/node_modules/
 frontend/dist/
 
-# IDE
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
+
+# ── Hackathon presentation artefacts (not part of the app) ───────────────────
+*.pptx
+*.pdf
+presentation.html
+make_ppt.py
+make_pdf.py
+make_invoice.py
+SampleInvoice_RIL.pdf
+LedgerLink_Presentation_v2.pdf
