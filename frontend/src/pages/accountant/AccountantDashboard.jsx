@@ -1,0 +1,171 @@
+import { useEffect, useState } from 'react';
+import api from '../../api/client';
+import { Clock, CheckCircle, XCircle, Eye, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
+} from 'recharts';
+
+const PIE_COLORS = {
+  'Pending':      '#F59E0B',
+  'Under Review': '#6366F1',
+  'Accepted':     '#10B981',
+  'Rejected':     '#EF4444',
+};
+const DEFAULT_COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444'];
+
+function StatCard({ label, value, icon: Icon, iconClass, loading }) {
+  return (
+    <div className="card group cursor-default transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] uppercase tracking-wider text-ink-3 font-medium">{label}</span>
+        <span className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 transition-transform duration-150 group-hover:scale-110 ${iconClass}`}>
+          <Icon size={14} />
+        </span>
+      </div>
+      <div className="mt-3 font-mono text-[32px] leading-none tracking-tight text-ink tnum">
+        {loading ? <span className="shimmer-bg inline-block w-16 h-8 rounded" /> : value ?? '—'}
+      </div>
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-surface border border-line rounded-xl px-3 py-2 shadow-lg text-[12px]">
+      <p className="font-medium text-ink mb-1">{label}</p>
+      {payload.map(p => (
+        <p key={p.name} style={{ color: p.fill || p.color }} className="font-mono">{p.name}: {p.value}</p>
+      ))}
+    </div>
+  );
+};
+
+export default function AccountantDashboard() {
+  const [stats, setStats]   = useState(null);
+  const [pending, setPending] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/api/stats/accountant'),
+      api.get('/api/transactions?status=pending'),
+    ]).then(([s, t]) => {
+      setStats(s.data);
+      setPending(t.data);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const STAT_CARDS = [
+    { label: 'Pending Review', value: stats?.pending,      icon: Clock,        iconClass: 'bg-amber-50 text-amber-700' },
+    { label: 'Under Review',   value: stats?.under_review, icon: Eye,          iconClass: 'bg-brand-50 text-brand-700' },
+    { label: 'Accepted',       value: stats?.accepted,     icon: CheckCircle,  iconClass: 'bg-emerald-50 text-emerald-700' },
+    { label: 'Rejected',       value: stats?.rejected,     icon: XCircle,      iconClass: 'bg-red-50 text-red-700' },
+  ];
+
+  return (
+    <div className="p-6 max-w-screen-xl space-y-6">
+      {/* Header */}
+      <div>
+        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Overview</div>
+        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">Accountant Dashboard</h1>
+        <p className="text-ink-2 text-[13px] mt-0.5">Review and process financial transactions</p>
+      </div>
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {STAT_CARDS.map(s => (
+          <StatCard key={s.label} {...s} loading={loading} />
+        ))}
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Pie: status breakdown */}
+        <div className="card">
+          <h2 className="font-semibold text-ink text-[14px] mb-4">Status Breakdown</h2>
+          {loading || !stats?.status_pie?.length ? (
+            <div className="h-48 shimmer-bg rounded-xl" />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie
+                  data={stats.status_pie}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={52}
+                  outerRadius={80}
+                  paddingAngle={3}
+                  dataKey="value"
+                >
+                  {stats.status_pie.map((entry, i) => (
+                    <Cell key={i} fill={PIE_COLORS[entry.name] || DEFAULT_COLORS[i % DEFAULT_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  iconType="circle" iconSize={8}
+                  formatter={v => <span style={{ fontSize: 11, color: '#57534E' }}>{v}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Bar: per-company breakdown */}
+        <div className="card">
+          <h2 className="font-semibold text-ink text-[14px] mb-4">Transactions by Company</h2>
+          {loading || !stats?.companies_bar?.length ? (
+            <div className="h-48 shimmer-bg rounded-xl" />
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={stats.companies_bar} barSize={14}>
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#A8A29E' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#A8A29E' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend iconType="circle" iconSize={7}
+                  formatter={v => <span style={{ fontSize: 11, color: '#57534E' }}>{v}</span>} />
+                <Bar dataKey="pending"  fill="#F59E0B" radius={[0,0,0,0]} name="Pending" />
+                <Bar dataKey="accepted" fill="#10B981" name="Accepted" />
+                <Bar dataKey="rejected" fill="#EF4444" radius={[4,4,0,0]} name="Rejected" />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Pending queue */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-semibold text-ink">Transactions Awaiting Review</h2>
+          <Link to="/accountant/review" className="text-[13px] text-brand-600 flex items-center gap-1 hover:text-brand-700 transition-colors">
+            Review all <ArrowRight size={13} />
+          </Link>
+        </div>
+        {loading ? (
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => <div key={i} className="h-9 shimmer-bg rounded-lg" />)}
+          </div>
+        ) : pending.length === 0 ? (
+          <p className="text-ink-3 text-sm">All caught up — no pending transactions.</p>
+        ) : (
+          <div className="divide-y divide-line">
+            {pending.slice(0, 5).map(tx => (
+              <div key={tx.id} className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-[13.5px] font-medium text-ink">{tx.vendor_name || 'Unknown vendor'}</p>
+                  <p className="text-[12px] text-ink-3">{tx.transaction_type?.replace(/_/g, ' ')} · {tx.file_name}</p>
+                </div>
+                <Link to="/accountant/review" className="text-[12px] text-brand-600 hover:text-brand-700 hover:underline">
+                  Review
+                </Link>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
