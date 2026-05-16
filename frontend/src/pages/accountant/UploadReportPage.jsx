@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
+import { useToast } from '../../context/ToastContext';
 import { Upload, CheckCircle, FileText, Download } from 'lucide-react';
 
 const downloadReport = async (reportId, fileName) => {
@@ -15,6 +16,7 @@ const downloadReport = async (reportId, fileName) => {
 const REPORT_TYPES = ['MIS', 'Balance Sheet', 'P&L', 'Cash Flow', 'GST Report', 'Other'];
 
 export default function UploadReportPage() {
+  const toast = useToast();
   const [companies, setCompanies] = useState([]);
   const [reports, setReports] = useState([]);
   const [file, setFile] = useState(null);
@@ -64,8 +66,11 @@ export default function UploadReportPage() {
       setFile(null);
       setForm(f => ({ ...f, title: '', description: '' }));
       fetchReports(form.company_id);
+      toast.success('Report published successfully');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Upload failed');
+      const msg = err.response?.data?.detail || 'Upload failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploading(false);
     }

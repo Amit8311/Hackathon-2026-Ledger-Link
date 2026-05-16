@@ -3,6 +3,34 @@ import api from '../../api/client';
 import { FileText, CheckCircle, Clock, XCircle, ArrowRight, Download, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+
+function useCountUp(target, duration = 900) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (target == null || isNaN(Number(target))) return;
+    const n = Number(target);
+    if (n === 0) { setCount(0); return; }
+    let frame = 0;
+    const total = Math.round(duration / 16);
+    const t = setInterval(() => {
+      frame++;
+      const eased = 1 - Math.pow(1 - frame / total, 3);
+      setCount(Math.round(eased * n));
+      if (frame >= total) { setCount(n); clearInterval(t); }
+    }, 16);
+    return () => clearInterval(t);
+  }, [target]);
+  return count;
+}
+function AnimatedNumber({ value }) {
+  const c = useCountUp(value);
+  return <span style={{ animation: 'countUp 0.3s ease' }}>{c}</span>;
+}
+function getGreeting(name) {
+  const h = new Date().getHours();
+  const t = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  return `Good ${t}, ${name?.split(' ')[0] || 'there'}`;
+}
 import {
   PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -37,7 +65,8 @@ function StatCard({ label, value, icon: Icon, iconClass, loading, sub }) {
         </span>
       </div>
       <div className="mt-3 font-mono text-[32px] leading-none tracking-tight text-ink tnum">
-        {loading ? <span className="shimmer-bg inline-block w-16 h-8 rounded" /> : (value ?? '—')}
+        {loading ? <span className="shimmer-bg inline-block w-16 h-8 rounded" /> :
+          typeof value === 'number' ? <AnimatedNumber value={value} /> : (value ?? '—')}
       </div>
       {sub && !loading && (
         <p className="text-[11px] text-ink-3 mt-1 font-mono">{sub}</p>
@@ -50,14 +79,20 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-surface border border-line rounded-xl px-3 py-2 shadow-lg text-[12px]">
-      <p className="font-medium text-ink mb-1">{label}</p>
-      {payload.map(p => (
-        <p key={p.name} style={{ color: p.stroke || p.fill || p.color }} className="font-mono">
-          {p.name}: {typeof p.value === 'number' && p.value > 1000
-            ? `₹${(p.value / 1000).toFixed(1)}k`
-            : p.value}
-        </p>
-      ))}
+      {label != null && <p className="font-medium text-ink mb-1">{label}</p>}
+      {payload.map((p, i) => {
+        const name  = p.payload?.name  ?? p.name  ?? '';
+        const value = p.value          ?? p.payload?.value;
+        const color = p.fill || p.color || p.stroke || '#6366F1';
+        return (
+          <p key={i} style={{ color }} className="font-mono text-ink">
+            {name ? `${name}: ` : ''}
+            {typeof value === 'number' && value > 1000
+              ? `₹${(value / 1000).toFixed(1)}k`
+              : value ?? '—'}
+          </p>
+        );
+      })}
     </div>
   );
 };
@@ -69,14 +104,14 @@ export default function CompanyDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.company_id) return;
-    Promise.all([
-      api.get('/api/stats/company'),
-      api.get(`/api/reports/company/${user.company_id}`),
-    ]).then(([s, r]) => {
-      setStats(s.data);
-      setReports(r.data);
-    }).finally(() => setLoading(false));
+    if (!user?.company_id) { setLoading(false); return; }
+    api.get('/api/stats/company')
+      .then(s => setStats(s.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+    api.get(`/api/reports/company/${user.company_id}`)
+      .then(r => setReports(r.data))
+      .catch(() => {});
   }, [user]);
 
   const fmt = (n) => n != null ? n.toLocaleString('en-IN') : '—';
@@ -94,9 +129,9 @@ export default function CompanyDashboard() {
     <div className="p-6 max-w-screen-xl space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Overview</div>
-        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">Company Dashboard</h1>
-        <p className="text-ink-2 text-[13px] mt-0.5">Overview of your financial documents</p>
+        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Company</div>
+        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">{getGreeting(user?.name)}</h1>
+        <p className="text-ink-2 text-[13px] mt-0.5">Here's your financial overview for today</p>
       </div>
 
       {/* Stat cards */}
@@ -111,8 +146,10 @@ export default function CompanyDashboard() {
         {/* Area: monthly approved spend */}
         <div className="card md:col-span-2">
           <h2 className="font-semibold text-ink text-[14px] mb-4">Monthly Approved Spend</h2>
-          {loading || !stats?.monthly_trend?.length ? (
+          {loading ? (
             <div className="h-48 shimmer-bg rounded-xl" />
+          ) : !stats?.monthly_trend?.length ? (
+            <div className="h-48 flex items-center justify-center text-ink-3 text-[13px]">No data available</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={stats.monthly_trend}>
@@ -141,8 +178,10 @@ export default function CompanyDashboard() {
         {/* Pie: status */}
         <div className="card">
           <h2 className="font-semibold text-ink text-[14px] mb-4">Status Mix</h2>
-          {loading || !stats?.status_pie?.length ? (
+          {loading ? (
             <div className="h-48 shimmer-bg rounded-xl" />
+          ) : !stats?.status_pie?.length ? (
+            <div className="h-48 flex items-center justify-center text-ink-3 text-[13px]">No transactions yet</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
@@ -173,8 +212,10 @@ export default function CompanyDashboard() {
         {/* Bar: transaction types */}
         <div className="card">
           <h2 className="font-semibold text-ink text-[14px] mb-4">By Document Type</h2>
-          {loading || !stats?.type_bar?.length ? (
+          {loading ? (
             <div className="h-44 shimmer-bg rounded-xl" />
+          ) : !stats?.type_bar?.length ? (
+            <div className="h-44 flex items-center justify-center text-ink-3 text-[13px]">No data available</div>
           ) : (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={stats.type_bar} barSize={18}>

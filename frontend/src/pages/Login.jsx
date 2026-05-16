@@ -40,7 +40,6 @@ export default function Login() {
       navigate(roleRedirect[user.role] || '/');
     } catch (err) {
       setError(err.response?.data?.detail || 'Invalid credentials');
-      setPassword('');
     } finally {
       setLoading(false);
     }
@@ -203,9 +202,6 @@ export default function Login() {
               </button>
             </form>
 
-            <p className="text-center text-[11px] text-ink-3 font-mono mt-5 bg-canvas rounded-lg px-3 py-2 border border-line">
-              admin@ledgerlink.com · admin123
-            </p>
           </div>
         </div>
       </div>

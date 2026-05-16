@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/client';
-import { Plus, ToggleLeft, ToggleRight, X, Building2, Mail, Phone, MapPin, Hash, Users, ChevronRight } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import { Plus, ToggleLeft, ToggleRight, X, Building2, Mail, Phone, MapPin, Hash, Users, ChevronRight, Eye, EyeOff } from 'lucide-react';
 
 const BUSINESS_TYPES = ['manufacturing', 'it', 'services', 'retail', 'other'];
 
@@ -25,6 +26,7 @@ const EMPTY_FORM = {
 };
 
 export default function CompaniesPage() {
+  const toast = useToast();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -33,6 +35,7 @@ export default function CompaniesPage() {
   const [selected, setSelected]   = useState(null);
   const [companyUsers, setCompanyUsers] = useState([]);
   const [form, setForm]           = useState(EMPTY_FORM);
+  const [showPw, setShowPw]       = useState(false);
 
   const fetchCompanies = () =>
     api.get('/api/companies').then(r => setCompanies(r.data)).finally(() => setLoading(false));
@@ -54,6 +57,7 @@ export default function CompaniesPage() {
       setShowModal(false);
       setForm(EMPTY_FORM);
       fetchCompanies();
+      toast.success('Company created successfully');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to create company');
     } finally {
@@ -69,7 +73,7 @@ export default function CompaniesPage() {
       setSelected(prev => ({ ...prev, is_active: !prev.is_active }));
   };
 
-  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setError(''); };
+  const closeModal = () => { setShowModal(false); setForm(EMPTY_FORM); setError(''); setShowPw(false); };
 
   return (
     <div className="p-6 max-w-screen-xl">
@@ -312,8 +316,16 @@ export default function CompaniesPage() {
                   </div>
                   <div className="col-span-2">
                     <label className="block text-[12px] font-medium text-ink-2 mb-1.5">Admin Password *</label>
-                    <input className="input" type="password" required autoComplete="new-password" placeholder="••••••••"
-                      value={form.admin_password} onChange={e => setForm({ ...form, admin_password: e.target.value })} />
+                    <div className="relative">
+                      <input className="input" type={showPw ? 'text' : 'password'} required autoComplete="new-password"
+                        placeholder="••••••••" style={{ paddingRight: '2.5rem' }}
+                        value={form.admin_password} onChange={e => setForm({ ...form, admin_password: e.target.value })} />
+                      <button type="button" tabIndex={-1}
+                        onClick={() => setShowPw(p => !p)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2 transition-colors">
+                        {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

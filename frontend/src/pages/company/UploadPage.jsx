@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import api from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { Upload, Sparkles, CheckCircle, AlertCircle, X, FileText } from 'lucide-react';
 
 const TRANSACTION_TYPES = [
@@ -119,6 +120,7 @@ function ScanningOverlay({ fileName }) {
 
 export default function UploadPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const fileInputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [txType, setTxType] = useState('purchase_invoice');
@@ -147,8 +149,11 @@ export default function UploadPage() {
       });
       setResult(res.data);
       setFile(null);
+      toast.success(res.data.ai_extracted ? 'Document scanned & uploaded successfully!' : 'Document uploaded successfully');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Upload failed');
+      const msg = err.response?.data?.detail || 'Upload failed';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setUploading(false);
     }
@@ -162,17 +167,18 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="p-8 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Upload Financial Document</h1>
-        <p className="text-gray-500 mt-1">Upload invoices, payments, or statements. AI will auto-extract the data.</p>
+    <div className="p-6 max-w-2xl space-y-6">
+      <div>
+        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Company</div>
+        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">Upload Document</h1>
+        <p className="text-ink-2 text-[13px] mt-0.5">Upload invoices, payments, or statements — AI will auto-extract the data.</p>
       </div>
 
       {/* Show scanning overlay while uploading with AI */}
       {uploading && useAI ? (
         <ScanningOverlay fileName={file?.name || 'document'} />
       ) : (
-        <form onSubmit={handleUpload} className="space-y-6">
+        <form onSubmit={handleUpload} className="space-y-5">
 
           {/* Drop Zone */}
           <div className="card">
@@ -231,8 +237,8 @@ export default function UploadPage() {
           {/* Options */}
           <div className="card space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Document Type *</label>
-              <select className="input" value={txType} onChange={e => setTxType(e.target.value)}>
+              <label className="block text-[11px] uppercase tracking-wider text-ink-3 font-medium mb-1">Document Type</label>
+              <select className="input text-[13px]" value={txType} onChange={e => setTxType(e.target.value)}>
                 {TRANSACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>

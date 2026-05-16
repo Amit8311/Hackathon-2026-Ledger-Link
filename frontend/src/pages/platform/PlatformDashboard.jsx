@@ -2,6 +2,37 @@ import { useEffect, useState } from 'react';
 import api from '../../api/client';
 import { Building2, CheckCircle, ArrowRight, LayoutGrid, Users, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+
+function useCountUp(target, duration = 900) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (target == null || isNaN(Number(target))) return;
+    const n = Number(target);
+    if (n === 0) { setCount(0); return; }
+    let frame = 0;
+    const total = Math.round(duration / 16);
+    const t = setInterval(() => {
+      frame++;
+      const eased = 1 - Math.pow(1 - frame / total, 3);
+      setCount(Math.round(eased * n));
+      if (frame >= total) { setCount(n); clearInterval(t); }
+    }, 16);
+    return () => clearInterval(t);
+  }, [target]);
+  return count;
+}
+
+function AnimatedNumber({ value }) {
+  const c = useCountUp(value);
+  return <span style={{ animation: 'countUp 0.3s ease' }}>{c}</span>;
+}
+
+function getGreeting(name) {
+  const h = new Date().getHours();
+  const t = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+  return `Good ${t}, ${name?.split(' ')[0] || 'Admin'}`;
+}
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
@@ -25,7 +56,8 @@ function StatCard({ label, value, icon: Icon, iconClass, loading }) {
         </span>
       </div>
       <div className="mt-3 font-mono text-[32px] leading-none tracking-tight text-ink tnum">
-        {loading ? <span className="shimmer-bg inline-block w-16 h-8 rounded" /> : value}
+        {loading ? <span className="shimmer-bg inline-block w-16 h-8 rounded" /> :
+          typeof value === 'number' ? <AnimatedNumber value={value} /> : (value ?? '—')}
       </div>
     </div>
   );
@@ -46,6 +78,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function PlatformDashboard() {
+  const { user } = useAuth();
   const [stats, setStats]   = useState(null);
   const [firms, setFirms]   = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,9 +105,9 @@ export default function PlatformDashboard() {
     <div className="p-6 max-w-screen-xl space-y-6">
       {/* Header */}
       <div>
-        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Overview</div>
-        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">Platform Dashboard</h1>
-        <p className="text-ink-2 text-[13px] mt-0.5">All accounting firms on LedgerLink</p>
+        <div className="text-[11px] uppercase tracking-widest text-ink-3 font-medium">Platform Admin</div>
+        <h1 className="text-[22px] font-semibold text-ink tracking-tight mt-0.5">{getGreeting(user?.name)}</h1>
+        <p className="text-ink-2 text-[13px] mt-0.5">Here's your platform overview for today</p>
       </div>
 
       {/* Stat cards */}
