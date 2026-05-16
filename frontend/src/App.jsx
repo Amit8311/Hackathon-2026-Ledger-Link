@@ -22,6 +22,9 @@ import AccountantDashboard from './pages/accountant/AccountantDashboard';
 import ReviewPage from './pages/accountant/ReviewPage';
 import UploadReportPage from './pages/accountant/UploadReportPage';
 
+import InsightsPage from './pages/company/InsightsPage';
+import AuditTrailPage from './pages/firm/AuditTrailPage';
+
 const roleHome = {
   platform_admin: '/platform',
   firm_admin: '/firm',
@@ -52,12 +55,14 @@ function AppRoutes() {
       <Route path="/firm/companies" element={<ProtectedRoute roles={['firm_admin']}><CompaniesPage /></ProtectedRoute>} />
       <Route path="/firm/accountants" element={<ProtectedRoute roles={['firm_admin']}><AccountantsPage /></ProtectedRoute>} />
       <Route path="/firm/payment-heads" element={<ProtectedRoute roles={['firm_admin']}><PaymentHeadsPage /></ProtectedRoute>} />
+      <Route path="/firm/audit" element={<ProtectedRoute roles={['firm_admin']}><AuditTrailPage /></ProtectedRoute>} />
 
       {/* Company */}
       <Route path="/company" element={<ProtectedRoute roles={['company_admin', 'company_user']}><CompanyDashboard /></ProtectedRoute>} />
       <Route path="/company/upload" element={<ProtectedRoute roles={['company_admin', 'company_user']}><UploadPage /></ProtectedRoute>} />
       <Route path="/company/transactions" element={<ProtectedRoute roles={['company_admin', 'company_user']}><TransactionsPage /></ProtectedRoute>} />
       <Route path="/company/reports" element={<ProtectedRoute roles={['company_admin', 'company_user']}><ReportsPage /></ProtectedRoute>} />
+      <Route path="/company/insights" element={<ProtectedRoute roles={['company_admin', 'company_user']}><InsightsPage /></ProtectedRoute>} />
 
       {/* Accountant */}
       <Route path="/accountant" element={<ProtectedRoute roles={['accountant']}><AccountantDashboard /></ProtectedRoute>} />

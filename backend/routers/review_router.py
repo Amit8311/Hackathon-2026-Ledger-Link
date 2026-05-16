@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from database import get_db
-from models.models import Transaction, TransactionStatus, User
+from models.models import Transaction, TransactionStatus, User, Notification, AuditLog
 from auth import require_accountant, get_current_user
 
 router = APIRouter(prefix="/api/review", tags=["review"])
@@ -38,7 +38,6 @@ def review_transaction(
     if data.action not in ["accept", "reject"]:
         raise HTTPException(status_code=400, detail="Action must be 'accept' or 'reject'")
 
-    # Apply any field corrections
     for field in ["vendor_name", "invoice_number", "invoice_date", "amount",
                   "tax_amount", "total_amount", "description", "payment_head_id", "payment_sub_head_id"]:
         value = getattr(data, field, None)
@@ -50,7 +49,33 @@ def review_transaction(
     tx.reviewer_notes = data.notes
 
     db.commit()
+
+    # Notify the uploader
+    action_word = "accepted" if data.action == "accept" else "rejected"
+    msg = f"Your transaction #{tx.id} ({tx.vendor_name or tx.file_name or 'document'}) was {action_word}"
+    if data.notes:
+        msg += f": {data.notes}"
+    notif = Notification(
+        user_id=tx.uploaded_by,
+        transaction_id=tx.id,
+        message=msg,
+        is_read=False,
+    )
+    db.add(notif)
+
+    # Audit log
+    db.add(AuditLog(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        user_role=current_user.role,
+        action=action_word,
+        entity_type="transaction",
+        entity_id=tx.id,
+        details=f"Vendor: {tx.vendor_name or '-'} | Amount: {tx.total_amount or '-'} | Notes: {data.notes or '-'}",
+    ))
+    db.commit()
     db.refresh(tx)
+
     return {
         "id": tx.id,
         "status": tx.status,

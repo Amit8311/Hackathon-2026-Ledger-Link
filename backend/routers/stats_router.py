@@ -227,3 +227,62 @@ def company_stats(
         "type_bar":           type_bar,
         "monthly_trend":      list(monthly.values()),
     }
+
+
+@router.get("/insights")
+def company_insights(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from models.models import PaymentHead
+    co_id = current_user.company_id
+    if not co_id:
+        return {"top_heads": [], "cash_flow": [], "doc_types": []}
+
+    accepted_txns = db.query(Transaction).filter(
+        Transaction.company_id == co_id,
+        Transaction.status == TransactionStatus.ACCEPTED.value,
+    ).all()
+
+    # Top expense heads
+    head_totals = defaultdict(float)
+    for tx in accepted_txns:
+        if tx.payment_head_id:
+            head = db.query(PaymentHead).filter_by(id=tx.payment_head_id).first()
+            label = head.name if head else f"Head #{tx.payment_head_id}"
+        else:
+            label = "Uncategorised"
+        head_totals[label] += tx.total_amount or 0
+
+    top_heads = sorted(
+        [{"name": k[:16], "amount": round(v, 2)} for k, v in head_totals.items()],
+        key=lambda x: x["amount"], reverse=True
+    )[:8]
+
+    # Monthly cash flow — last 6 months
+    months = _last_n_months(6)
+    flow = {m: {"month": m[-2:] + "/" + m[:4][-2:], "income": 0.0, "expense": 0.0} for m in months}
+    for tx in accepted_txns:
+        if not tx.invoice_date:
+            continue
+        ym = tx.invoice_date[:7]
+        if ym not in flow:
+            continue
+        amt = tx.total_amount or 0
+        if tx.transaction_type in ("sales_invoice",):
+            flow[ym]["income"] = round(flow[ym]["income"] + amt, 2)
+        else:
+            flow[ym]["expense"] = round(flow[ym]["expense"] + amt, 2)
+
+    # Document type breakdown (all statuses)
+    all_txns = db.query(Transaction).filter(Transaction.company_id == co_id).all()
+    doc_types = defaultdict(int)
+    for tx in all_txns:
+        doc_types[tx.transaction_type.replace("_", " ").title()] += 1
+    doc_type_data = [{"name": k[:14], "count": v} for k, v in doc_types.items()]
+
+    return {
+        "top_heads": top_heads,
+        "cash_flow": list(flow.values()),
+        "doc_types": doc_type_data,
+    }

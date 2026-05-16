@@ -3,10 +3,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   Building2, Users, FileText, Upload, ClipboardCheck,
-  BarChart2, Home, UserCircle, KeyRound, LogOut,
+  BarChart2, Home, UserCircle, KeyRound, LogOut, Shield, TrendingUp,
 } from 'lucide-react';
 import ProfileModal from './ProfileModal';
 import ChangePasswordModal from './ChangePasswordModal';
+import NotificationBell from './NotificationBell';
 
 const PAGE_BG = {
   '/platform':             { img: '/bg/platform-dashboard.jpg',   overlay: 'rgba(250,250,249,0.82)' },
@@ -34,6 +35,7 @@ const roleNavMap = {
     { to: '/firm/companies',      label: 'Companies',     icon: Building2, group: 'Work' },
     { to: '/firm/accountants',    label: 'Accountants',   icon: Users,     group: 'Work' },
     { to: '/firm/payment-heads',  label: 'Payment Heads', icon: FileText,  group: 'Work' },
+    { to: '/firm/audit',          label: 'Audit Trail',   icon: Shield,    group: 'Work' },
   ],
   accountant: [
     { to: '/accountant',          label: 'Dashboard',           icon: Home,           group: 'Overview' },
@@ -41,15 +43,17 @@ const roleNavMap = {
     { to: '/accountant/reports',  label: 'Upload Reports',      icon: Upload,         group: 'Work' },
   ],
   company_admin: [
-    { to: '/company',               label: 'Dashboard',        icon: Home,      group: 'Overview' },
-    { to: '/company/upload',        label: 'Upload Documents', icon: Upload,    group: 'Work' },
-    { to: '/company/transactions',  label: 'Transactions',     icon: FileText,  group: 'Work' },
-    { to: '/company/reports',       label: 'Reports',          icon: BarChart2, group: 'Work' },
+    { to: '/company',               label: 'Dashboard',        icon: Home,        group: 'Overview' },
+    { to: '/company/upload',        label: 'Upload Documents', icon: Upload,      group: 'Work' },
+    { to: '/company/transactions',  label: 'Transactions',     icon: FileText,    group: 'Work' },
+    { to: '/company/reports',       label: 'Reports',          icon: BarChart2,   group: 'Work' },
+    { to: '/company/insights',      label: 'Insights',         icon: TrendingUp,  group: 'Work' },
   ],
   company_user: [
-    { to: '/company',               label: 'Dashboard',        icon: Home,     group: 'Overview' },
-    { to: '/company/upload',        label: 'Upload Documents', icon: Upload,   group: 'Work' },
-    { to: '/company/transactions',  label: 'Transactions',     icon: FileText, group: 'Work' },
+    { to: '/company',               label: 'Dashboard',        icon: Home,        group: 'Overview' },
+    { to: '/company/upload',        label: 'Upload Documents', icon: Upload,      group: 'Work' },
+    { to: '/company/transactions',  label: 'Transactions',     icon: FileText,    group: 'Work' },
+    { to: '/company/insights',      label: 'Insights',         icon: TrendingUp,  group: 'Work' },
   ],
 };
 
@@ -240,6 +244,10 @@ export default function Layout({ children }) {
           opacity: 0.4,
           zIndex: 10,
         }} />
+        {/* Notification bell — top right */}
+        <div className="absolute top-4 right-5 z-20">
+          <NotificationBell />
+        </div>
 
         {/* Dot-grid texture */}
         <div className="pointer-events-none fixed inset-0 left-60" style={{

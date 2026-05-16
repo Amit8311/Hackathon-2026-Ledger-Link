@@ -171,3 +171,25 @@ class Report(Base):
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     company = relationship("Company", back_populates="reports")
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id          = Column(Integer, primary_key=True, index=True)
+    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False)
+    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=True)
+    message     = Column(String, nullable=False)
+    is_read     = Column(Boolean, default=False)
+    created_at  = Column(DateTime(timezone=True), server_default=func.now())
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id          = Column(Integer, primary_key=True, index=True)
+    user_id     = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_name   = Column(String, nullable=False)
+    user_role   = Column(String, nullable=False)
+    action      = Column(String, nullable=False)
+    entity_type = Column(String, nullable=False)
+    entity_id   = Column(Integer, nullable=True)
+    details     = Column(Text, nullable=True)
+    created_at  = Column(DateTime(timezone=True), server_default=func.now())

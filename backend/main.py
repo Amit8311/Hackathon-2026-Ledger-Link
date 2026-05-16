@@ -19,6 +19,7 @@ from routers import (
     stats_router,
 )
 from routers import forgot_password_router
+from routers import notifications_router, audit_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -56,6 +57,8 @@ app.include_router(review_router.router)
 app.include_router(reports_router.router)
 app.include_router(forgot_password_router.router)
 app.include_router(stats_router.router)
+app.include_router(notifications_router.router)
+app.include_router(audit_router.router)
 
 Path("uploads/profiles").mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

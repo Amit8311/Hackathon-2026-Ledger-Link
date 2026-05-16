@@ -105,6 +105,19 @@ async def upload_transaction(
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
+
+    from models.models import AuditLog
+    db.add(AuditLog(
+        user_id=current_user.id,
+        user_name=current_user.name,
+        user_role=current_user.role,
+        action="uploaded",
+        entity_type="transaction",
+        entity_id=transaction.id,
+        details=f"File: {file.filename} | AI: {transaction.ai_extracted}",
+    ))
+    db.commit()
+
     return transaction
 
 
@@ -181,3 +194,75 @@ def create_manual_transaction(
     db.commit()
     db.refresh(tx)
     return tx
+
+
+import asyncio
+
+@router.post("/bulk")
+async def bulk_upload(
+    files: List[UploadFile] = File(...),
+    transaction_type: str = Form(...),
+    company_id: int = Form(...),
+    use_ai: bool = Form(True),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_company_access),
+):
+    from models.models import AuditLog
+    results = []
+    for file in files:
+        suffix = Path(file.filename).suffix.lower()
+        if suffix not in ALLOWED_EXTENSIONS:
+            results.append({"file": file.filename, "status": "error", "detail": "File type not allowed"})
+            continue
+        try:
+            file_path = UPLOAD_DIR / f"{current_user.id}_{file.filename}"
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            tx = Transaction(
+                transaction_type=transaction_type,
+                company_id=company_id,
+                uploaded_by=current_user.id,
+                file_path=str(file_path),
+                file_name=file.filename,
+                status=TransactionStatus.PENDING.value,
+            )
+
+            if use_ai and suffix in {".jpg", ".jpeg", ".png", ".webp", ".pdf"}:
+                try:
+                    extracted = extract_invoice_data(str(file_path))
+                    if "error" not in extracted and "parse_error" not in extracted:
+                        tx.vendor_name   = extracted.get("vendor_name")
+                        tx.invoice_number = extracted.get("invoice_number")
+                        tx.invoice_date  = extracted.get("invoice_date")
+                        tx.amount        = extracted.get("amount")
+                        tx.tax_amount    = extracted.get("tax_amount") or 0
+                        tx.total_amount  = extracted.get("total_amount")
+                        tx.description   = extracted.get("description")
+                        if extracted.get("transaction_type"):
+                            tx.transaction_type = extracted["transaction_type"]
+                        tx.ai_extracted = True
+                    tx.raw_ai_response = json.dumps(extracted)
+                except Exception as e:
+                    tx.raw_ai_response = json.dumps({"error": str(e)})
+
+            db.add(tx)
+            db.commit()
+            db.refresh(tx)
+
+            db.add(AuditLog(
+                user_id=current_user.id,
+                user_name=current_user.name,
+                user_role=current_user.role,
+                action="uploaded",
+                entity_type="transaction",
+                entity_id=tx.id,
+                details=f"File: {file.filename} | AI: {tx.ai_extracted}",
+            ))
+            db.commit()
+
+            results.append({"file": file.filename, "status": "ok", "transaction_id": tx.id, "ai_extracted": tx.ai_extracted})
+        except Exception as e:
+            results.append({"file": file.filename, "status": "error", "detail": str(e)})
+
+    return {"total": len(files), "results": results}
