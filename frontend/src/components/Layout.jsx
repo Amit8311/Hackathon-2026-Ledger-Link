@@ -219,7 +219,7 @@ export default function Layout({ children }) {
           <span className="text-[15px] font-semibold text-ink">{workspace.name}</span>
         </div>
         <div className="flex items-center gap-3">
-          <NotificationBell />
+          {['company_admin', 'company_user'].includes(user?.role) && <NotificationBell />}
           <button
             onClick={() => setShowMobileMenu(p => !p)}
             className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden border border-line bg-brand-50"
@@ -274,10 +274,12 @@ export default function Layout({ children }) {
           zIndex: 10,
         }} />
 
-        {/* Notification bell — desktop only (mobile shows in top header) */}
-        <div className="hidden md:block absolute top-4 right-5 z-20">
-          <NotificationBell />
-        </div>
+        {/* Notification bell — desktop only, company roles only */}
+        {['company_admin', 'company_user'].includes(user?.role) && (
+          <div className="hidden md:block absolute top-4 right-5 z-20">
+            <NotificationBell />
+          </div>
+        )}
 
         <div className="pointer-events-none fixed inset-0 md:left-60" style={{
           backgroundImage: 'radial-gradient(rgba(79,70,229,.06) 1px, transparent 1px)',

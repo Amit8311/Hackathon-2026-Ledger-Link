@@ -22,13 +22,17 @@ export default function AuditTrailPage() {
   const [loading, setLoading]   = useState(true);
   const [filter, setFilter]     = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const load = async () => {
     setRefreshing(true);
+    setApiError('');
     try {
       const res = await api.get('/api/audit/');
       setLogs(res.data);
-    } catch {}
+    } catch (err) {
+      setApiError(err.response?.data?.detail || 'Failed to load audit logs — check backend connection');
+    }
     setLoading(false);
     setRefreshing(false);
   };
@@ -81,6 +85,13 @@ export default function AuditTrailPage() {
           style={{ backgroundColor: 'var(--surface)' }}
         />
       </div>
+
+      {/* API error */}
+      {apiError && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-[13px]">
+          {apiError}
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-2xl border border-line overflow-hidden" style={{ backgroundColor: 'var(--surface)' }}>
