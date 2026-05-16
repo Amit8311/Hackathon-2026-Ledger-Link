@@ -43,15 +43,18 @@ def create_company(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_firm_admin),
 ):
-    if db.query(Company).filter(Company.email == data.email).first():
+    company_email = data.email.lower().strip()
+    admin_email   = data.admin_email.lower().strip()
+
+    if db.query(Company).filter(Company.email == company_email).first():
         raise HTTPException(status_code=400, detail="Company email already exists")
-    if db.query(User).filter(User.email == data.admin_email).first():
+    if db.query(User).filter(User.email == admin_email).first():
         raise HTTPException(status_code=400, detail="Admin email already exists")
 
     firm_id = current_user.firm_id
     company = Company(
         name=data.name,
-        email=data.email,
+        email=company_email,
         phone=data.phone,
         address=data.address,
         business_type=data.business_type,
@@ -63,7 +66,7 @@ def create_company(
 
     admin = User(
         name=data.admin_name,
-        email=data.admin_email,
+        email=admin_email,
         hashed_password=get_password_hash(data.admin_password),
         role=UserRole.COMPANY_ADMIN.value,
         firm_id=firm_id,

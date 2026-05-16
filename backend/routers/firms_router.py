@@ -38,18 +38,21 @@ def create_firm(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_platform_admin),
 ):
-    if db.query(AccountingFirm).filter(AccountingFirm.email == data.email).first():
+    firm_email  = data.email.lower().strip()
+    admin_email = data.admin_email.lower().strip()
+
+    if db.query(AccountingFirm).filter(AccountingFirm.email == firm_email).first():
         raise HTTPException(status_code=400, detail="Firm email already exists")
-    if db.query(User).filter(User.email == data.admin_email).first():
+    if db.query(User).filter(User.email == admin_email).first():
         raise HTTPException(status_code=400, detail="Admin email already exists")
 
-    firm = AccountingFirm(name=data.name, email=data.email, phone=data.phone, address=data.address)
+    firm = AccountingFirm(name=data.name, email=firm_email, phone=data.phone, address=data.address)
     db.add(firm)
     db.flush()
 
     admin = User(
         name=data.admin_name,
-        email=data.admin_email,
+        email=admin_email,
         hashed_password=get_password_hash(data.admin_password),
         role=UserRole.FIRM_ADMIN.value,
         firm_id=firm.id,

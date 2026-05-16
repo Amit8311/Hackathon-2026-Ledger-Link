@@ -44,7 +44,7 @@ def _extract_from_image(file_path: str) -> dict:
     try:
         image = Image.open(file_path)
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=[EXTRACTION_PROMPT, image],
         )
         return _parse_ai_response(response.text)
@@ -62,7 +62,7 @@ def _extract_from_pdf(file_path: str) -> dict:
                 text += page.extract_text() or ""
 
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             contents=f"{EXTRACTION_PROMPT}\n\nDocument text:\n{text[:4000]}",
         )
         return _parse_ai_response(response.text)
