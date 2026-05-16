@@ -7,7 +7,7 @@ import shutil
 
 from database import get_db
 from models.models import User, UserRole
-from auth import get_password_hash, require_firm_admin, get_current_user
+from auth import get_password_hash, verify_password, require_firm_admin, get_current_user
 
 PROFILE_PHOTO_DIR = Path("uploads/profiles")
 PROFILE_PHOTO_DIR.mkdir(parents=True, exist_ok=True)
@@ -41,13 +41,19 @@ class ProfileUpdate(BaseModel):
     name: str
 
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
+
 @router.post("/", response_model=UserResponse)
 def create_user(
     data: UserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_firm_admin),
 ):
-    if db.query(User).filter(User.email == data.email).first():
+    normalized_email = data.email.lower().strip()
+    if db.query(User).filter(User.email == normalized_email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
 
     allowed_roles = [UserRole.ACCOUNTANT.value, UserRole.COMPANY_ADMIN.value, UserRole.COMPANY_USER.value]
@@ -56,7 +62,7 @@ def create_user(
 
     user = User(
         name=data.name,
-        email=data.email,
+        email=normalized_email,
         hashed_password=get_password_hash(data.password),
         role=data.role,
         firm_id=current_user.firm_id,
@@ -97,6 +103,21 @@ def update_me(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/me/password")
+def change_password(
+    data: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not verify_password(data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    current_user.hashed_password = get_password_hash(data.new_password)
+    db.commit()
+    return {"detail": "Password changed successfully"}
 
 
 @router.post("/me/photo", response_model=UserResponse)

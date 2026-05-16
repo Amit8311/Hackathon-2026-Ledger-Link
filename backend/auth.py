@@ -7,7 +7,7 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models.models import User, UserRole
+from models.models import User, UserRole, AccountingFirm, Company
 
 SECRET_KEY = "ledgerlink-secret-key-change-in-production"
 ALGORITHM = "HS256"
@@ -49,6 +49,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(User).filter(User.id == int(user_id)).first()
     if user is None or not user.is_active:
         raise credentials_exception
+
+    if user.role in (UserRole.FIRM_ADMIN.value, UserRole.ACCOUNTANT.value):
+        if user.firm_id:
+            firm = db.query(AccountingFirm).filter(AccountingFirm.id == user.firm_id).first()
+            if not firm or not firm.is_active:
+                raise HTTPException(status_code=403, detail="Your accounting firm has been deactivated")
+    elif user.role in (UserRole.COMPANY_ADMIN.value, UserRole.COMPANY_USER.value):
+        if user.company_id:
+            company = db.query(Company).filter(Company.id == user.company_id).first()
+            if not company or not company.is_active:
+                raise HTTPException(status_code=403, detail="Your company has been deactivated")
+
     return user
 
 
