@@ -1,0 +1,26 @@
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ledgerlink-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/ledgerlink.db:/app/ledgerlink.db   # persist database
+      - ./backend/uploads:/app/uploads               # persist uploaded files
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ledgerlink-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
